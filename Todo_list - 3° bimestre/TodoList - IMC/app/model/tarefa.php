@@ -1,5 +1,7 @@
 <?php 
 
+//model de tarefa
+
 require_once __DIR__ . '/../config/database.php';
 
 class Tarefa{
