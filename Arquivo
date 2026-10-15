@@ -1,0 +1,613 @@
+============================================================
+
+PARTE 1: CÓDIGOS CORRETOS (GABARITO DOS 6 ARQUIVOS)
+
+============================================================
+
+
+
+
+
+database.php (caminho: app/config/database.php)
+
+------------
+
+<?php
+
+
+
+class Database {
+
+    private $host = 'localhost';
+
+    private $username = 'root';
+
+    private $senha = '';
+
+    private $banco = 'todo_list';
+
+
+
+    public $conn = '';
+
+
+
+    public function conectar(){
+
+        $this->conn = new mysqli($this->host, $this->username, $this->senha, $this->banco);
+
+        if($this->conn->connect_error){
+
+            die("algo deu errado". $this->conn->connect_error);
+
+        }
+
+
+
+        return $this->conn;
+
+    }
+
+
+
+}
+
+?>
+
+
+
+
+
+controller.php (caminho: app/controllers/controller.php)
+
+------------
+
+<?php
+
+require_once __DIR__ . '/../models/tarefa.php';
+
+
+
+class tarefaController{
+
+    private $tarefaModel;
+
+
+
+    public function __construct(){
+
+        $this->tarefaModel = new Tarefas();
+
+    }
+
+
+
+    public function criar(){
+
+        if(isset($_POST['descricao']) && !empty(trim($_POST['descricao']))){
+
+            $this->tarefaModel->criar($_POST['descricao']);
+
+        }
+
+
+
+        header("Location: index.php");
+
+    }
+
+
+
+    public function excluir(){
+
+        if(isset($_GET['id'])){
+
+            $this->tarefaModel->excluir($_GET['id']);
+
+        }
+
+
+
+        header("Location: index.php");
+
+    }
+
+
+
+    public function index(){
+
+        $tarefas = $this->tarefaModel->listar();
+
+        include __DIR__ . '/../views/listar.php';
+
+    }
+
+
+
+    public function editar(){
+
+        if(isset($_POST['descricao']) && !empty(trim($_POST['descricao'])) && isset($_POST['id'])){
+
+            $this->tarefaModel->editar($_POST['descricao'], $_POST['id']);
+
+        }
+
+        header("Location: index.php");
+
+    }
+
+}
+
+?>
+
+
+
+
+
+tarefa.php (caminho: app/models/tarefa.php)
+
+------------
+
+<?php
+
+
+
+require_once __DIR__ . '/../config/database.php';
+
+
+
+class Tarefas{
+
+    private $conn;
+
+    public function __construct(){
+
+        $db = new Database();
+
+        $this->conn = $db->conectar();
+
+    }
+
+
+
+    public function criar($descricao){
+
+        $descricao = $this->conn->real_escape_string($descricao);
+
+        $sql = "INSERT INTO tarefas (descricao) VALUES ('$descricao')";
+
+        return $this->conn->query($sql);
+
+    }
+
+
+
+    public function excluir($id){
+
+        $id = intval($id);
+
+        $sql = "DELETE FROM tarefas WHERE id = '$id'";
+
+        return $this->conn->query($sql);
+
+    }
+
+
+
+    public function listar(){
+
+        $tarefa = [];
+
+        $sql = "SELECT * FROM tarefas ORDER BY data_criacao DESC";
+
+        $resultado = $this->conn->query($sql);
+
+
+
+        if( $resultado->num_rows > 0){
+
+            while($row = $resultado->fetch_assoc()){
+
+                $tarefa[] = $row;
+
+            }
+
+        }
+
+        return $tarefa;
+
+    }
+
+
+
+    public function editar($descricao, $id){
+
+        $id= intval($id);
+
+        $descricao = $this->conn->real_escape_string($descricao);
+
+        $sql = "UPDATE tarefas SET descricao = '$descricao' WHERE id = '$id'";
+
+        return $this->conn->query($sql);
+
+    }
+
+};
+
+?>
+
+
+
+
+
+listar.php (caminho: app/views/listar.php)
+
+------------
+
+<!DOCTYPE html>
+
+<html lang="pt-br">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>To-Do List (MVC)</title>
+
+    <style>
+
+        .modal { display: none; }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <h1>TO-DO List (MVC)</h1>
+
+
+
+    <form action="index.php?action=criar" method="POST">
+
+        <input type="text" name="descricao" placeholder="Descrição da tarefa" required>
+
+        <button type="submit">Adicionar</button>
+
+    </form>
+
+
+
+    <h2>Suas tarefas</h2>
+
+
+
+    <?php if (!empty($tarefas)): ?>
+
+        <ul>
+
+            <?php foreach ($tarefas as $tarefa): ?>
+
+                <li>
+
+                    <?= $tarefa['descricao']; ?>
+
+                    <a href="index.php?action=excluir&id=<?= $tarefa['id']; ?>">Excluir</a>
+
+                    <button onclick="abrirModal(<?= $tarefa['id']; ?>, '<?= $tarefa['descricao']; ?>')">Editar</button>
+
+                </li>
+
+            <?php endforeach; ?>
+
+        </ul>
+
+    <?php else: ?>
+
+        <p>Não há tarefas ainda!</p>
+
+    <?php endif; ?>
+
+
+
+    <?php include __DIR__ . '/modalEditar.php'; ?>
+
+
+
+    <script>
+
+        function abrirModal(id, descricao){
+
+            document.getElementById("modalEditar").style.display = "block"
+
+            document.getElementById("valorId").value = id
+
+            document.getElementById("editarDescricao").value = descricao
+
+        }
+
+
+
+        function fecharModal(){
+
+            document.getElementById("modalEditar").style.display = "none"
+
+        }
+
+    </script>
+
+
+
+</body>
+
+</html>
+
+
+
+
+
+modalEditar.php (caminho: app/views/modalEditar.php)
+
+------------
+
+<div id="modalEditar" class="modal">
+
+<div class="modal-conteudo">
+
+
+
+    <h2>Editar tarefa</h2>
+
+
+
+    <form action="index.php?action=editar" method="POST">
+
+
+
+        <input type="hidden" name="id" id="valorId">
+
+
+
+        <input type="text" name="descricao" id="editarDescricao">
+
+
+
+        <button type="submit"> Salvar </button>
+
+
+
+        <button type="button" onclick="fecharModal()">Cancelar</button>
+
+
+
+    </form>
+
+
+
+</div>
+
+</div>
+
+
+
+
+
+index.php (caminho: index.php - na raiz do projeto)
+
+------------
+
+<?php
+
+
+
+require_once __DIR__ . '/app/controllers/controller.php';
+
+
+
+$controller = new tarefaController();
+
+$action = $_GET['action'] ?? 'index';
+
+switch ($action){
+
+    case 'criar':
+
+        $controller->criar();
+
+        break;
+
+    case 'excluir':
+
+        $controller->excluir();
+
+        break;
+
+    case 'editar':
+
+        $controller->editar();
+
+        break;
+
+    default:
+
+        $controller->index();
+
+        break;
+
+}
+
+
+
+?>
+
+
+
+
+
+============================================================
+
+PARTE 2: COMANDO DO SERVIDOR LOCAL (PORTA 8000) E LINK
+
+============================================================
+
+
+
+1. Ligar no XAMPP:
+
+   - Aperte "Start" no MySQL.
+
+
+
+2. Comando para ligar o servidor no Terminal do VS Code (dentro da pasta do projeto):
+
+   php -S localhost:8000
+
+
+
+   (Caso apareça que 'php' não é reconhecido, use este comando no terminal):
+
+   C:\xampp\php\php.exe -S localhost:8000
+
+
+
+3. Link para colocar no navegador:
+
+   http://localhost:8000/index.php
+
+   (ou apenas: localhost:8000)
+
+
+
+4. Comandos do Git (para clonar no início e enviar no final):
+
+   - No início:
+
+     git clone LINK_DO_REPOSITORIO
+
+   - No final (aperte Ctrl + C no terminal para parar o servidor antes do commit):
+
+     git add .
+
+     git commit -m "Erros corrigidos"
+
+     git push
+
+
+
+
+
+============================================================
+
+PARTE 3: ENTENDENDO O CÓDIGO INTEIRO E COMO EXPLICAR OS BUGS
+
+============================================================
+
+
+
+COMO O PROJETO FUNCIONA (VISÃO GERAL MVC):
+
+O projeto usa o padrão MVC (Model-View-Controller), onde cada arquivo tem uma função única:
+
+
+
+1. O "Porteiro" (index.php):
+
+   Toda vez que você entra no site ou clica num botão, o pedido passa primeiro pelo index.php.
+
+   Ele olha para a URL atrás da palavra "action" ($_GET['action']).
+
+   - Se na URL tiver "?action=criar", o switch chama $controller->criar().
+
+   - Se tiver "?action=excluir", chama $controller->excluir().
+
+   - Se tiver "?action=editar", chama $controller->editar().
+
+   - Se não tiver nada na URL, ele assume o valor padrão 'index' e cai no "default:", chamando $controller->index() para mostrar a página inicial.
+
+
+
+2. O "Gerente" (controller.php):
+
+   O Controller não mexe no banco de dados diretamente; ele recebe os dados dos formulários, confere se não estão vazios e manda o Model trabalhar:
+
+   - criar(): Confere se veio $_POST['descricao'] do formulário. Se veio, manda o Model criar no banco e recarrega a tela com header("Location: index.php").
+
+   - excluir(): Confere se veio $_GET['id'] pela URL do link "Excluir". Se veio, manda o Model apagar e recarrega a tela.
+
+   - editar(): Confere se vieram tanto $_POST['descricao'] quanto $_POST['id'] do modal. Manda os dois para o Model atualizar e recarrega a tela.
+
+   - index(): Pede a lista de tarefas ao Model ($this->tarefaModel->listar()), guarda na variável $tarefas e abre o arquivo visual listar.php.
+
+
+
+3. O "Trabalhador do Banco" (tarefa.php - Model):
+
+   É o único arquivo que conversa com o MySQL (usando a conexão do database.php).
+
+   - Para proteger o banco contra invasão/erros (SQL Injection), sempre que ele recebe um TEXTO ($descricao), ele limpa com $this->conn->real_escape_string($descricao).
+
+   - Sempre que recebe um NÚMERO ($id), ele garante que é inteiro usando intval($id).
+
+   - No listar(), ele faz um SELECT ordenando da mais nova para a mais antiga (ORDER BY data_criacao DESC). Se houver resultados ($resultado->num_rows > 0), o laço while pega linha por linha (fetch_assoc) e guarda dentro do array $tarefa[] para devolver ao Controller.
+
+
+
+4. As "Telas" (listar.php e modalEditar.php - Views):
+
+   - O listar.php mostra o formulário de criar tarefa (que envia via POST para index.php?action=criar) e faz um foreach na variável $tarefas para desenhar cada item na tela.
+
+   - O botão "Excluir" é um link <a> que passa a ação e o ID direto na URL: index.php?action=excluir&id=... (por isso no controller é lido com $_GET['id']).
+
+   - O botão "Editar" chama a função JavaScript abrirModal(id, descricao). Essa função pega a div #modalEditar e muda o display para "block" (para aparecer na tela), além de colocar o id escondido no input #valorId e o texto atual no input #editarDescricao.
+
+   - Quando você clica em "Salvar" dentro do modalEditar.php, o formulário envia esses dois inputs via POST para index.php?action=editar.
+
+
+
+------------------------------------------------------------
+
+GUIA RÁPIDO: O QUE DIZER AO PROFESSOR EM CADA TIPO DE BUG
+
+------------------------------------------------------------
+
+
+
+1. Se o erro estiver no index.php (ex: nome do case trocado ou falta de break):
+
+   - O que acontecia: "Quando eu clicava em criar/editar/excluir, o site apenas recarregava e não fazia nada."
+
+   - Como expliquei e consertei: "No index.php, o switch verifica o $_GET['action']. O nome do case estava diferente do que o formulário enviava na URL (ou estava faltando o break), então ele caía direto no default e só recarregava a lista. Ajustei o nome do case para bater com a action."
+
+
+
+2. Se o erro estiver no controller.php (ex: trocou $_POST por $_GET ou mudou o nome do campo):
+
+   - O que acontecia: "O formulário enviava os dados, mas o Controller ignorava e redirecionava sem salvar/excluir."
+
+   - Como expliquei e consertei: "Os formulários de criar e editar enviam os dados pelo método POST, então o controller precisa ler $_POST['descricao'] e $_POST['id']. Já o botão excluir é um link de URL, então precisa ser lido com $_GET['id']. Estava trocado no if(isset(...)), por isso dava falso silenciosamente."
+
+
+
+3. Se o erro estiver no tarefa.php - editar() (ex: parâmetros invertidos):
+
+   - O que acontecia: "Ao tentar editar uma tarefa no modal e salvar, nada mudava no banco."
+
+   - Como expliquei e consertei: "No controller, o método editar é chamado passando primeiro a descrição e depois o ID: editar($_POST['descricao'], $_POST['id']). Lá no Model tarefa.php, os parâmetros da função estavam invertidos como ($id, $descricao), fazendo o intval() transformar o texto em 0 e rodar o UPDATE no ID errado."
+
+
+
+4. Se o erro estiver no tarefa.php - listar() (ex: num_rows < 0 ou retorno errado):
+
+   - O que acontecia: "Mesmo adicionando tarefas no banco, a tela sempre mostrava 'Não há tarefas ainda!'."
+
+   - Como expliquei e consertei: "No método listar() do Model, a condição que verifica se o banco retornou linhas estava invertida (ou não estava adicionando $row dentro do array $tarefa[]). Corrigi para if($resultado->num_rows > 0) preenchendo o array corretamente."
+
+
+
+5. Se o erro estiver no modalEditar.php ou no JS do listar.php (ex: id ou name trocado nos inputs):
+
+   - O que acontecia: "O modal não abria preenchido OU ao clicar em Salvar no modal ele não atualizava a tarefa."
+
+   - Como expliquei e consertei: "O JavaScript usa document.getElementById('valorId') e 'editarDescricao' para preencher os campos quando o modal abre, então o atributo id do HTML precisa ser idêntico. Já o PHP no Controller lê pelo atributo name='id' e name='descricao'. Um desses nomes estava diferente, impedindo a comunicação entre a View e o Controller."
